@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futuristic Scanner Landing Page</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Russo+One&family=Rajdhani:wght@500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #00ffff;
+            --secondary-color: #ff00ff;
+            --background-color: #111;
+            --text-color: #fff;
+            --accent-color: #ff9900;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-height: 100vh;
+            justify-content: space-between;
+        }
+
+        header {
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            width: 100%;
+            box-shadow: 0 4px 10px rgba(0, 255, 255, 0.3);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            margin: 0;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            
+        }
+
+        .description {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 10px;
+            font-size: clamp(1rem, 2.5vw, 1.5rem);
+            font-family: 'Russo One', sans-serif;
+            letter-spacing: 1px;
+            line-height: 1.8;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+
+        .cta-button {
+            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+            color: var(--text-color);
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .cta-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 25px rgba(255, 0, 255, 0.6);
+        }
+
+        footer {
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            width: 100%;
+            font-size: 0.9rem;
+            box-shadow: 0 -4px 10px rgba(255, 0, 255, 0.3);
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+
+        .social-links a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-family: 'Russo One', sans-serif;
+            font-size: 1.2rem;
+            padding: 10px 15px;
+            border: 2px solid var(--accent-color);
+            border-radius: 5px;
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+        }
+
+        .social-links a:hover {
+            background-color: var(--accent-color);
+            color: var(--background-color);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(255, 153, 0, 0.5);
+        }
+
+        @media (max-width: 600px) {
+            .social-links {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .cta-button {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Welcome to the Most Advanced Card Scanner</h1>
+        </header>
+        <main>
+            <p class="description">
+                Dive into a world of cutting-edge technology. With our futuristic scanner, transform the ordinary into extraordinary. Click below to begin!
+            </p>
+            <button class="cta-button" onclick="redirectToScanner()">Perform a Scan</button>
+        </main>
+        <footer>
+            <div class="social-links">
+                <a href="#" target="_blank">Twitter</a>
+                <a href="#" target="_blank">LinkedIn</a>
+                <a href="#" target="_blank">GitHub</a>
+            </div>
+            <p>© 2024 Shamase.co | All Rights Reserved</p>
+        </footer>
+    </div>
+    <script>
+        function redirectToScanner() {
+            window.location.href = "scan-now.html"; // Link to your scanner page
+        }
+    </script>
+</body>
+</html>
