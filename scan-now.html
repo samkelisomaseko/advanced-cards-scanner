@@ -262,5 +262,129 @@ if (!stream || !stream.active) {
 
         startCamera();
     </script>
+
+<script src="https://docs.opencv.org/4.5.2/opencv.js"></script>
+<script>
+    const video = document.getElementById('camera-feed');
+    const overlayCanvas = document.getElementById('overlay-canvas');
+    const resultCanvas = document.getElementById('result-canvas');
+    const captureBtn = document.getElementById('capture-btn');
+    const filterSelect = document.getElementById('filter-select');
+    const saveBtn = document.getElementById('save-btn');
+    const shareBtn = document.getElementById('share-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const errorMessage = document.getElementById('error-message');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    
+    let stream;
+    let ctxOverlay = overlayCanvas.getContext('2d');
+    let ctxResult = resultCanvas.getContext('2d');
+    
+    async function startCamera() {
+        try {
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                throw new Error('Camera access requires HTTPS or localhost.');
+            }
+            const constraints = {
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = stream;
+            errorMessage.style.display = 'none';
+        } catch (err) {
+            showError(err.message || 'Failed to access the camera. Please allow camera permissions.');
+        }
+    }
+
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+    }
+
+    function resetCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        video.srcObject = null;
+        startCamera();
+    }
+
+    function captureImage() {
+        overlayCanvas.width = video.videoWidth;
+        overlayCanvas.height = video.videoHeight;
+        ctxOverlay.drawImage(video, 0, 0, overlayCanvas.width, overlayCanvas.height);
+        
+        // Copy to result canvas
+        resultCanvas.width = overlayCanvas.width;
+        resultCanvas.height = overlayCanvas.height;
+        ctxResult.drawImage(overlayCanvas, 0, 0);
+        applyFilter(); // Apply the selected filter
+    }
+
+    function applyFilter() {
+        const filterValue = filterSelect.value;
+        const imageData = ctxResult.getImageData(0, 0, resultCanvas.width, resultCanvas.height);
+        let data = imageData.data;
+
+        switch (filterValue) {
+            case 'bw':
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    data[i] = data[i + 1] = data[i + 2] = avg; // Set R, G, B to average value
+                }
+                break;
+            case 'sepia':
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i + 1], b = data[i + 2];
+                    data[i] = r * 0.393 + g * 0.769 + b * 0.189; // Red channel
+                    data[i + 1] = r * 0.349 + g * 0.686 + b * 0.168; // Green channel
+                    data[i + 2] = r * 0.272 + g * 0.534 + b * 0.131; // Blue channel
+                }
+                break;
+            case '3d':
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = data[i + 4] || data[i]; // Red shift
+                }
+                break;
+            default:
+                break;
+        }
+        ctxResult.putImageData(imageData, 0, 0);
+    }
+
+    function saveImage() {
+        const link = document.createElement('a');
+        link.download = 'captured_image.png';
+        link.href = resultCanvas.toDataURL();
+        link.click();
+    }
+
+    function shareImage() {
+        if (navigator.share) {
+            resultCanvas.toBlob(blob => {
+                const file = new File([blob], 'captured_image.png', { type: 'image/png' });
+                navigator.share({
+                    title: 'Captured Image',
+                    files: [file]
+                }).catch(err => console.error('Error sharing:', err));
+            });
+        } else {
+            alert('Web Share API not supported in this browser.');
+        }
+    }
+
+    captureBtn.addEventListener('click', captureImage);
+    filterSelect.addEventListener('change', applyFilter);
+    saveBtn.addEventListener('click', saveImage);
+    shareBtn.addEventListener('click', shareImage);
+    resetBtn.addEventListener('click', resetCamera);
+
+    startCamera();
+</script>
+
 </body>
 </html>
