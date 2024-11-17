@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Futuristic Card Scanner</title>
+    <title>Advanced Card Scanner</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -181,7 +182,7 @@
 <body>
     <div class="app-container">
         <header>
-            <h1>Advanced Futuristic Card Scanner</h1>
+            <h1>Advanced Card Scanner</h1>
         </header>
         <main>
             <div class="scanner-container">
@@ -215,311 +216,23 @@
     </div>
 
     <script src="https://docs.opencv.org/4.5.2/opencv.js"></script>
-    <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
     <script>
-        let video, canvas, ctx, resultCanvas, captureBtn, filterSelect, extractedData, saveBtn, shareBtn, resetBtn, loadingIndicator, errorMessage;
-        let stream, capturedImage, isProcessing = false;
-
-        function initializeElements() {
-            video = document.getElementById('camera-feed');
-            canvas = document.getElementById('overlay-canvas');
-            ctx = canvas.getContext('2d');
-            resultCanvas = document.getElementById('result-canvas');
-            captureBtn = document.getElementById('capture-btn');
-            filterSelect = document.getElementById('filter-select');
-            extractedData = document.getElementById('extracted-data');
-            saveBtn = document.getElementById('save-btn');
-            shareBtn = document.getElementById('share-btn');
-            resetBtn = document.getElementById('reset-btn');
-            loadingIndicator = document.getElementById('loading-indicator');
-            errorMessage = document.getElementById('error-message');
-        }
+        const video = document.getElementById('camera-feed');
+        const errorMessage = document.getElementById('error-message');
 
         async function startCamera() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                video.srcObject = stream;
-                await video.play();
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                resultCanvas.width = video.videoWidth;
-                resultCanvas.height = video.videoHeight;
-                requestAnimationFrame(processFrame);
-            } catch (err) {
-                console.error("Error accessing the camera", err);
-                showError("Error accessing the camera. Please make sure you've granted the necessary permissions.");
-            }
-        }
-
-        function processFrame() {
-            if (isProcessing || capturedImage) return;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            requestAnimationFrame(processFrame);
-        }
-
-        function captureImage() {
-            if (isProcessing) return;
-            isProcessing = true;
-            loadingIndicator.style.display = 'flex';
-            hideError();
-
-            capturedImage = new cv.Mat(video.height, video.width, cv.CV_8UC4);
-            let cap = new cv.VideoCapture(video);
-            cap.read(capturedImage);
-
-            processAndDisplayImage();
-        }
-
-        function processAndDisplayImage() {
-            let processedImage = processImage(capturedImage);
-            let filteredImage = applyFilter(processedImage, filterSelect.value);
-            cv.imshow('result-canvas', filteredImage);
-
-            extractTextFromImage(filteredImage);
-
-            processedImage.delete();
-            filteredImage.delete();
-
-            video.style.display = 'none';
-            canvas.style.display = 'none';
-            resultCanvas.style.display = 'block';
-            captureBtn.style.display = 'none';
-            filterSelect.style.display = 'inline-block';
-            saveBtn.style.display = 'inline-block';
-            shareBtn.style.display = 'inline-block';
-            resetBtn.style.display = 'inline-block';
-
-            isProcessing = false;
-            loadingIndicator.style.display = 'none';
-        }
-
-        function processImage(frame) {
-            let gray = new cv.Mat();
-            let edges = new cv.Mat();
-            let contours = new cv.MatVector();
-            let hierarchy = new cv.Mat();
-
-            cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY);
-            cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-            cv.Canny(gray, edges, 75, 200);
-            cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-            let maxArea = 0;
-            let maxContourIndex = -1;
-            for (let i = 0; i < contours.size(); ++i) {
-                let area = cv.contourArea(contours.get(i));
-                if (area > maxArea) {
-                    maxArea = area;
-                    maxContourIndex = i;
+                if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                    throw new Error('Camera access requires HTTPS or localhost.');
                 }
-            }
-
-            if (maxContourIndex !== -1) {
-                let color = new cv.Scalar(0, 255, 0, 255);
-                cv.drawContours(frame, contours, maxContourIndex, color, 2);
-
-                let rotatedRect = cv.minAreaRect(contours.get(maxContourIndex));
-                let vertices = cv.RotatedRect.points(rotatedRect);
-
-                for (let i = 0; i < 4; i++) {
-                    cv.line(frame, vertices[i], vertices[(i + 1) % 4], color, 2, cv.LINE_AA, 0);
-                }
-
-                let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                    vertices[0].x, vertices[0].y,
-                    vertices[1].x, vertices[1].y,
-                    vertices[2].x, vertices[2].y,
-                    vertices[3].x, vertices[3].y
-                ]);
-                let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                    0, 0,
-                    frame.cols - 1, 0,
-                    frame.cols - 1, frame.rows - 1,
-                    0, frame.rows - 1
-                ]);
-                let M = cv.getPerspectiveTransform(srcTri, dstTri);
-                cv.warpPerspective(frame, frame, M, new cv.Size(frame.cols, frame.rows));
-
-                srcTri.delete();
-                dstTri.delete();
-                M.delete();
-            }
-
-            gray.delete();
-            edges.delete();
-            contours.delete();
-            hierarchy.delete();
-
-            return frame;
-        }
-
-        function applyFilter(frame, filterType) {
-            let filteredFrame = new cv.Mat();
-
-            switch (filterType) {
-                case '3d':
-                    let channels = new cv.MatVector();
-                    cv.split(frame, channels);
-                    let blueChannel = channels.get(0);
-                    let redChannel = channels.get(2);
-                    cv.addWeighted(blueChannel, 0.5, redChannel, 0.5, 0, filteredFrame);
-                    cv.applyColorMap(filteredFrame, filteredFrame, cv.COLORMAP_COOL);
-                    channels.delete();
-                    break;
-                case 'bw':
-                    cv.cvtColor(frame, filteredFrame, cv.COLOR_RGBA2GRAY);
-                    cv.cvtColor(filteredFrame, filteredFrame, cv.COLOR_GRAY2RGBA);
-                    break;
-                case 'sepia':
-                    let sepiaMat = cv.matFromArray(4, 4, cv.CV_32F, [
-                        0.272, 0.534, 0.131, 0,
-                        0.349, 0.686, 0.168, 0,
-                        0.393, 0.769, 0.189, 0,
-                        0, 0, 0, 1
-                    ]);
-                    cv.transform(frame, filteredFrame, sepiaMat);
-                    sepiaMat.delete();
-                    break;
-                default:
-                    frame.copyTo(filteredFrame);
-            }
-
-            return filteredFrame;
-        }
-
-        async function extractTextFromImage(image) {
-            try {
-                const result = await Tesseract.recognize(image);
-                extractedData.textContent = result.data.text;
-
-                const cardInfo = identifyCardType(result.data.text);
-                if (cardInfo) {
-                    extractedData.textContent += '\n\nIdentified Card Type: ' + cardInfo.type;
-                    for (const [key, value] of Object.entries(cardInfo.data)) {
-                        extractedData.textContent += `\n${key}: ${value}`;
-                    }
-                }
-            } catch (error) {
-                console.error('OCR Error:', error);
-                showError('Error extracting text from the image. Please try again.');
-            }
-        }
-
-        function identifyCardType(text) {
-            const creditCardRegex = /(\d{4}[-\s]?){4}/;
-            const studentIdRegex = /Student ID:?\s*(\d+)/i;
-            const businessCardRegex = /(Tel|Phone|Email):/i;
-
-            if (creditCardRegex.test(text)) {
-                const number = text.match(creditCardRegex)[0].replace(/[-\s]/g, '');
-                return {
-                    type: 'Credit Card',
-                    data: {
-                        number: number.replace(/(\d{4})/g, '$1 ').trim(),
-                        issuer: identifyCreditCardIssuer(number),
-                    }
-                };
-            } else if (studentIdRegex.test(text)) {
-                return {
-                    type: 'Student ID',
-                    data: {
-                        id: text.match(studentIdRegex)[1],
-                        name: extractName(text),
-                    }
-                };
-            } else if (businessCardRegex.test(text)) {
-                return {
-                    type: 'Business Card',
-                    data: {
-                        name: extractName(text),
-                        contact: extractContact(text),
-                    }
-                };
-            }
-
-            return null;
-        }
-
-        function identifyCreditCardIssuer(number) {
-            const firstDigit = number.charAt(0);
-            const firstTwoDigits = number.substring(0, 2);
-
-            if (firstDigit === '4') return 'Visa';
-            if (['51', '52', '53', '54', '55'].includes(firstTwoDigits)) return 'MasterCard';
-            if (['34', '37'].includes(firstTwoDigits)) return 'American Express';
-            if (['60', '65'].includes(firstTwoDigits)) return 'Discover';
-
-            return 'Unknown';
-        }
-
-        function extractName(text) {
-            const lines = text.split('\n');
-            return lines[0].trim();
-        }
-
-        function extractContact(text) {
-            const phoneRegex = /(\+?1?[-.\s]?$$?[0-9]{3}$$?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4})/;
-            const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/;
-
-            const phoneMatch = text.match(phoneRegex);
-            const emailMatch = text.match(emailRegex);
-
-            let contact = '';
-            if (phoneMatch) contact += `Phone: ${phoneMatch[0]}\n`;
-            if (emailMatch) contact += `Email: ${emailMatch[0]}`;
-
-            return contact.trim();
-        }
-
-        function saveImage() {
-            try {
-                let dataURL = resultCanvas.toDataURL('image/png');
-                let link = document.createElement('a');
-                link.href = dataURL;
-                link.download = 'advanced-card-scanner.png';
-                link.click();
-            } catch (error) {
-                console.error('Save error:', error);
-                showError('Failed to save the image. Please try again.');
-            }
-        }
-
-        function shareImage() {
-            if (navigator.share) {
-                resultCanvas.toBlob(function(blob) {
-                    const file = new File([blob], 'advanced-card-scanner.png', { type: 'image/png' });
-                    navigator.share({
-                        title: 'Scanned Card',
-                        text: 'Check out this card I scanned!',
-                        files: [file],
-                    })
-                    .then(() => console.log('Share was successful.'))
-                    .catch((error) => {
-                        console.error('Sharing failed', error);
-                        showError('Failed to share the image. Please try again.');
-                    });
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
                 });
-            } else {
-                console.log('Web Share API not supported');
-                showError('Sharing is not supported on this browser.');
+                video.srcObject = stream;
+                errorMessage.style.display = 'none';
+            } catch (err) {
+                showError(err.message || 'Failed to access the camera. Please allow camera permissions.');
             }
-        }
-
-        function resetScanner() {
-            video.style.display = 'block';
-            canvas.style.display = 'block';
-            resultCanvas.style.display = 'none';
-            captureBtn.style.display = 'inline-block';
-            filterSelect.style.display = 'inline-block';
-            saveBtn.style.display = 'none';
-            shareBtn.style.display = 'none';
-            resetBtn.style.display = 'none';
-            extractedData.textContent = '';
-            if (capturedImage) {
-                capturedImage.delete();
-                capturedImage = null;
-            }
-            hideError();
         }
 
         function showError(message) {
@@ -527,31 +240,17 @@
             errorMessage.style.display = 'block';
         }
 
-        function hideError() {
-            errorMessage.style.display = 'none';
-        }
-
-        function onOpenCvReady() {
-            initializeElements();
+        function resetCamera() {
+            const stream = video.srcObject;
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+            video.srcObject = null;
             startCamera();
-
-            captureBtn.addEventListener('click', captureImage);
-            filterSelect.addEventListener('change', function() {
-                if (capturedImage) {
-                    processAndDisplayImage();
-                }
-            });
-            saveBtn.addEventListener('click', saveImage);
-            shareBtn.addEventListener('click', shareImage);
-            resetBtn.addEventListener('click', resetScanner);
         }
 
-        // Check if OpenCV.js is loaded
-        if (typeof cv !== 'undefined') {
-            onOpenCvReady();
-        } else {
-            document.addEventListener('opencv-loaded', onOpenCvReady);
-        }
+        startCamera();
     </script>
 </body>
 </html>
