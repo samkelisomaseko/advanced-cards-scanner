@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Card Scanner</title>
+    <title>Advanced Card Scanner - Restored</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -225,9 +225,19 @@
                 if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
                     throw new Error('Camera access requires HTTPS or localhost.');
                 }
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
+                
+const constraints = {
+    video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 }, 
+        height: { ideal: 1080 }
+    }
+};
+const stream = await navigator.mediaDevices.getUserMedia(constraints);
+if (!stream || !stream.active) {
+    throw new Error('Camera stream is unstable or inactive.');
+}
+
                 video.srcObject = stream;
                 errorMessage.style.display = 'none';
             } catch (err) {
